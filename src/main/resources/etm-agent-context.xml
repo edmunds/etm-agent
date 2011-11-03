@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context-2.5.xsd">
+
+    <import resource="classpath:configuration-common-spring.xml"/>
+    <import resource="classpath:etm-common-context.xml"/>
+
+    <context:component-scan base-package="com.edmunds.etm.agent.api"/>
+    <context:component-scan base-package="com.edmunds.etm.agent.impl"/>
+    <context:component-scan base-package="com.edmunds.etm.agent.apache"/>
+
+    <bean class="org.springframework.beans.factory.config.PropertyOverrideConfigurer">
+        <property name="location"
+                  value="file:///deployments/edmunds/properties/common/etm-agent.properties"/>
+        <property name="ignoreResourceNotFound" value="true"/>
+        <property name="ignoreInvalidKeys" value="false"/>
+    </bean>
+
+    <bean id="projectProperties" class="com.edmunds.etm.agent.impl.ProjectProperties">
+        <property name="version" value="${project.version}"/>
+    </bean>
+
+    <!-- JMX Configuration -->
+    <context:mbean-export/>
+
+</beans>

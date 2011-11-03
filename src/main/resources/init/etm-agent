@@ -1,0 +1,48 @@
+#! /bin/sh
+#
+# chkconfig:	2345 99 5
+# description:	ETM Agent
+# processname:	java
+
+
+NodeId="${project.artifactId}"
+
+STARTSCRIPT="/deployments/${project.artifactId}/${project.artifactId}/start.sh"
+STOPSCRIPT="/deployments/${project.artifactId}/${project.artifactId}/stop.sh"
+
+user=`whoami`
+
+if [ x"$user" = x"root" ]; then
+        DROP_PRIVS="su - webapps -c "
+        STARTSCRIPT="$DROP_PRIVS $STARTSCRIPT"
+fi
+
+case $1 in 
+stop) 
+      echo "Stopping ${NodeId}..."
+      $STOPSCRIPT
+      ;;
+
+start)
+	echo "Starting ${NodeId}..."
+     	${STARTSCRIPT}
+	exit $?
+	;;
+restart) 
+	echo "Shutting down ${NodeId}..."
+	$STOPSCRIPT
+	$STARTSCRIPT
+	exit $?
+	;;
+status) 
+      check=`ps -FC java | grep ${NodeId} | awk '{print $2}'`
+      if [ "x${check}" = "x" ] ; then
+            echo "${NodeId} : shutdown" 
+      else 
+  	    echo "${NodeId} : running"
+      fi
+      ;;
+*)
+	echo "Usage: $0 {start|stop|restart|status}"
+	 ;;
+esac
