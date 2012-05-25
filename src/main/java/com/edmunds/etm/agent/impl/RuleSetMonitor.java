@@ -119,9 +119,9 @@ public class RuleSetMonitor implements ZooKeeperConnectionListener, Watcher {
         if (rc == Code.OK) {
             connection.getData(ruleSetNodePath, this, cb, null);
         } else if (rc == Code.NONODE) {
-            logger.info(String.format("Rule set node does not exist: %s", path));
+            logger.info(String.format("Rule set node %s does not exist", path));
         } else {
-            logger.error(String.format("Error %s while checking for rule set node: %s", rc, path));
+            logger.error(String.format("Error %s while checking for rule set node %s", rc, path));
         }
     }
 
@@ -138,7 +138,7 @@ public class RuleSetMonitor implements ZooKeeperConnectionListener, Watcher {
         logger.debug("Received rule set data");
 
         if (rc != Code.OK) {
-            logger.error(String.format("Error %s while getting rule set data at node: %s", rc, path));
+            logger.error(String.format("Error %s while getting rule set data for node %s", rc, path));
             return;
         }
 
@@ -146,11 +146,11 @@ public class RuleSetMonitor implements ZooKeeperConnectionListener, Watcher {
         byte[] ruleSetData = data == null ? new byte[0] : data;
 
         RuleSetDeploymentTask task = new RuleSetDeploymentTask(
-            ruleSetData,
-            serverController,
-            connection,
-            agentReporter,
-            agentPaths);
+                ruleSetData,
+                serverController,
+                connection,
+                agentReporter,
+                agentPaths);
 
         deploymentExecutor.execute(task);
     }
@@ -165,7 +165,7 @@ public class RuleSetMonitor implements ZooKeeperConnectionListener, Watcher {
         Runnable active;
 
         public synchronized void execute(final Runnable r) {
-            logger.debug("Queueing new rule set deployment");
+            logger.debug("Queueing new rule set deployment task");
             pending = new Runnable() {
                 public void run() {
                     try {
@@ -184,7 +184,6 @@ public class RuleSetMonitor implements ZooKeeperConnectionListener, Watcher {
         protected synchronized void scheduleNext() {
             active = pending;
             if (active != null) {
-                logger.debug("Starting new rule set deployment");
                 pending = null;
                 new Thread(active).start();
             }

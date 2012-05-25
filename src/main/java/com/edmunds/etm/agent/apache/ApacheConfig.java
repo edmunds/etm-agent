@@ -39,7 +39,7 @@ public class ApacheConfig {
     private static final String DEFAULT_SYNTAX_CHECK_COMMAND = "/apps/apache-httpd/bin/apachectl -t -f {FILE_PATH}";
 
     // Default command to restart Apache
-    private static final String DEFAULT_RESTART_COMMAND = "sudo /sbin/service httpd restart";
+    private static final String DEFAULT_RESTART_COMMAND = "sudo /sbin/service httpd reload";
 
     // Default server host name
     private static final String DEFAULT_HOST_NAME = "";
@@ -79,7 +79,7 @@ public class ApacheConfig {
 
     /**
      * Get the fully qualified path to the Apache configuration file.
-     *
+     * <p/>
      * The default path is {@code /var/lib/etm-agent/etm-apache.conf}
      *
      * @return configuration file path
@@ -117,7 +117,7 @@ public class ApacheConfig {
 
     /**
      * Gets the command to check the syntax of the configuration file.
-     *
+     * <p/>
      * The default is {@code /apps/apache-httpd/bin/apachectl -t -f {FILE_PATH}}.
      *
      * @return the Apache syntax check command
@@ -137,7 +137,7 @@ public class ApacheConfig {
 
     /**
      * Gets the command to restart Apache.
-     *
+     * <p/>
      * The default is {@code sudo /sbin/service httpd restart}.
      *
      * @return the Apache restart command
@@ -157,7 +157,7 @@ public class ApacheConfig {
 
     /**
      * Gets the host name of the Apache server.
-     *
+     * <p/>
      * This value is used for health checks. The default is blank.
      *
      * @return the server host name
@@ -177,7 +177,7 @@ public class ApacheConfig {
 
     /**
      * Gets the port number of the Apache server.
-     *
+     * <p/>
      * This value is used for health checks. The default is {@code 80}.
      *
      * @return the server port
@@ -197,7 +197,7 @@ public class ApacheConfig {
 
     /**
      * Gets the health check interval in milliseconds.
-     *
+     * <p/>
      * This value controls how often (and therefore, how many) health checks are performed up to the timeout specified
      * by {@link #getCheckTimeout()}. The default is {@code 1000} (one per second).
      *
@@ -218,7 +218,7 @@ public class ApacheConfig {
 
     /**
      * Gets the health check timeout in milliseconds.
-     *
+     * <p/>
      * This value controls the total amount of time the health check will be performed before determining that the
      * server is not responding. The default is {@code 10000} (ten seconds).
      *
@@ -254,5 +254,4 @@ public class ApacheConfig {
     private String replaceFilePathToken(String value) {
         return value.replaceAll(FILE_PATH_TOKEN_REGEX, filePath);
     }
-
 }

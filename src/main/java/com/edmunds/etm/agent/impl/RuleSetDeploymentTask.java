@@ -50,6 +50,8 @@ public class RuleSetDeploymentTask implements Runnable, ZooKeeperElectionListene
     private byte[] oldRuleSetData;
     private RuleSetDeploymentResult deploymentResult;
     private boolean ruleSetRolledBack;
+    private String newRuleSetDigest;
+    private String oldRuleSetDigest;
 
     public RuleSetDeploymentTask(byte[] newRuleSetData,
                                  WebServerController serverController,
@@ -71,12 +73,15 @@ public class RuleSetDeploymentTask implements Runnable, ZooKeeperElectionListene
      */
     @Override
     public void run() {
+
+        logger.info(String.format("Deploying rule set %s", getNewRuleSetDigest()));
+
         // Get the current configuration
         oldRuleSetData = serverController.readRuleSetData();
 
-        if (Arrays.equals(oldRuleSetData, newRuleSetData)) {
+        if(Arrays.equals(oldRuleSetData, newRuleSetData)) {
             // No change to rule set data, report as successful deployment
-            logger.debug("Rule set unchanged");
+            logger.info(String.format("Current rule set %s is up to date", getOldRuleSetDigest()));
             deploymentResult = RuleSetDeploymentResult.OK;
             reportDeploymentEvent();
             return;
@@ -84,16 +89,15 @@ public class RuleSetDeploymentTask implements Runnable, ZooKeeperElectionListene
 
         restartElection.enroll(this);
 
+        logger.info("Waiting for leadership election");
         try {
-            synchronized (lock) {
+            synchronized(lock) {
                 lock.wait();
             }
-        } catch (InterruptedException e) {
+        } catch(InterruptedException e) {
             logger.error("Rule set deployment task interrupted", e);
             connection.reconnect();
         }
-
-        logger.debug("Rule set  deployment task completed");
     }
 
     @Override
@@ -109,24 +113,24 @@ public class RuleSetDeploymentTask implements Runnable, ZooKeeperElectionListene
 
     @Override
     public void onElectionError(ZooKeeperElection election, KeeperException error) {
-        logger.error(String.format("Election error, withdrawing: %s", error));
+        logger.error(String.format("Election error: %s", error));
         connection.reconnect();
         exit();
     }
 
     @Override
     public void onHealthCheckComplete(boolean alive) {
-        if (alive) {
-            if (!ruleSetRolledBack) {
+        if(alive) {
+            if(!ruleSetRolledBack) {
                 deploymentResult = RuleSetDeploymentResult.OK;
             }
             restartElection.withdraw();
-        } else if (ruleSetRolledBack) {
-            logger.error(String.format("Rollback failed with rule set: %s", getNewRuleSetDigest()));
+        } else if(ruleSetRolledBack) {
+            logger.error(String.format("Rollback failed with rule set %s", getNewRuleSetDigest()));
             deploymentResult = RuleSetDeploymentResult.ROLLBACK_FAILED;
             restartElection.withdraw();
         } else {
-            logger.error(String.format("Health check failed with rule set: %s", getNewRuleSetDigest()));
+            logger.error(String.format("Health check failed with rule set %s", getNewRuleSetDigest()));
             deploymentResult = RuleSetDeploymentResult.HEALTH_CHECK_FAILED;
             rollBackRuleSet();
         }
@@ -140,16 +144,16 @@ public class RuleSetDeploymentTask implements Runnable, ZooKeeperElectionListene
      */
     private void deployNewRuleSet() {
 
-        logger.info("Deploying new rule set");
 
         // Write the new rule set file
+        logger.info(String.format("Writing data for rule set %s", getNewRuleSetDigest()));
         serverController.writeRuleSetData(newRuleSetData);
 
         // Test the syntax
         boolean syntaxOk = serverController.checkSyntax();
 
-        if (!syntaxOk) {
-            logger.error(String.format("Syntax check failed with rule set: %s", getNewRuleSetDigest()));
+        if(!syntaxOk) {
+            logger.error(String.format("Syntax check failed with rule set %s", getNewRuleSetDigest()));
             deploymentResult = RuleSetDeploymentResult.SYNTAX_CHECK_FAILED;
 
             // Restore old rule set
@@ -158,9 +162,10 @@ public class RuleSetDeploymentTask implements Runnable, ZooKeeperElectionListene
         }
 
         // Restart with new rule set
+        logger.info(String.format("Restarting server with rule set %s", getNewRuleSetDigest()));
         boolean restartOk = serverController.restart();
-        if (!restartOk) {
-            logger.warn(String.format("Server restart failed with rule set: %s", getNewRuleSetDigest()));
+        if(!restartOk) {
+            logger.warn(String.format("Server restart failed with rule set %s", getNewRuleSetDigest()));
             deploymentResult = RuleSetDeploymentResult.RESTART_COMMAND_FAILED;
 
             // Restore old rule set
@@ -176,13 +181,14 @@ public class RuleSetDeploymentTask implements Runnable, ZooKeeperElectionListene
      * Rolls back the rule set back to the original data.
      */
     private void rollBackRuleSet() {
+        logger.info(String.format("Rolling back to rule set %s", getOldRuleSetDigest()));
         serverController.writeRuleSetData(oldRuleSetData);
         ruleSetRolledBack = true;
 
         boolean success = serverController.restart();
-        if (!success) {
+        if(!success) {
             deploymentResult = RuleSetDeploymentResult.RESTART_COMMAND_FAILED;
-            logger.error(String.format("Server restart failed with rule set: %s", getNewRuleSetDigest()));
+            logger.error(String.format("Server restart failed with rule set %s", getOldRuleSetDigest()));
         }
         serverController.newHealthCheck().execute(this);
     }
@@ -193,7 +199,7 @@ public class RuleSetDeploymentTask implements Runnable, ZooKeeperElectionListene
         RuleSetDeploymentEvent event = new RuleSetDeploymentEvent(eventDate, ruleSetDigest, deploymentResult);
 
         String activeRuleSetDigest;
-        if (deploymentResult == RuleSetDeploymentResult.OK) {
+        if(deploymentResult == RuleSetDeploymentResult.OK) {
             activeRuleSetDigest = ruleSetDigest;
         } else {
             activeRuleSetDigest = getOldRuleSetDigest();
@@ -202,15 +208,21 @@ public class RuleSetDeploymentTask implements Runnable, ZooKeeperElectionListene
     }
 
     private String getNewRuleSetDigest() {
-        return AgentUtils.ruleSetDigest(newRuleSetData);
+        if(newRuleSetDigest == null) {
+            newRuleSetDigest = AgentUtils.ruleSetDigest(newRuleSetData);
+        }
+        return newRuleSetDigest;
     }
 
     private String getOldRuleSetDigest() {
-        return AgentUtils.ruleSetDigest(oldRuleSetData);
+        if(oldRuleSetDigest == null) {
+            oldRuleSetDigest = AgentUtils.ruleSetDigest(oldRuleSetData);
+        }
+        return oldRuleSetDigest;
     }
 
     private void exit() {
-        synchronized (lock) {
+        synchronized(lock) {
             lock.notifyAll();
         }
     }
