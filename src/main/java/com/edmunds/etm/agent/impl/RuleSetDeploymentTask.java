@@ -25,7 +25,6 @@ import com.edmunds.zookeeper.connection.ZooKeeperConnection;
 import com.edmunds.zookeeper.election.ZooKeeperElection;
 import com.edmunds.zookeeper.election.ZooKeeperElectionListener;
 import org.apache.log4j.Logger;
-import org.apache.zookeeper.KeeperException;
 
 import java.util.Arrays;
 import java.util.Date;
@@ -64,6 +63,8 @@ public class RuleSetDeploymentTask implements Runnable, ZooKeeperElectionListene
         this.agentReporter = agentReporter;
         this.restartElection = new ZooKeeperElection(connection, agentPaths.getRestartElection());
         this.deploymentResult = RuleSetDeploymentResult.UNKNOWN;
+
+        this.restartElection.addListener(this);
     }
 
     /**
@@ -87,7 +88,7 @@ public class RuleSetDeploymentTask implements Runnable, ZooKeeperElectionListene
             return;
         }
 
-        restartElection.enroll(this);
+        restartElection.enroll();
 
         logger.info("Waiting for leadership election");
         try {
@@ -101,21 +102,13 @@ public class RuleSetDeploymentTask implements Runnable, ZooKeeperElectionListene
     }
 
     @Override
-    public void onElectionLeader(ZooKeeperElection election) {
-        deployNewRuleSet();
-    }
-
-    @Override
-    public void onElectionWithdrawn(ZooKeeperElection election) {
-        reportDeploymentEvent();
-        exit();
-    }
-
-    @Override
-    public void onElectionError(ZooKeeperElection election, KeeperException error) {
-        logger.error(String.format("Election error: %s", error));
-        connection.reconnect();
-        exit();
+    public void onElectionStateChange(ZooKeeperElection zooKeeperElection, boolean master) {
+        if (master) {
+            deployNewRuleSet();
+        } else {
+            reportDeploymentEvent();
+            exit();
+        }
     }
 
     @Override
