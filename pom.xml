@@ -91,6 +91,12 @@
             <version>[1.0.0,1.1.0)</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.edmunds.oss.etm</groupId>
+            <artifactId>etm-client-core</artifactId>
+            <version>[1.0.0,1.1.0)</version>
+        </dependency>
+
         <!-- Other Dependencies -->
         <dependency>
             <groupId>commons-lang</groupId>
