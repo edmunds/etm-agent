@@ -15,6 +15,7 @@
  */
 package com.edmunds.etm.agent.impl;
 
+import com.edmunds.etm.agent.api.AgentConfig;
 import com.edmunds.etm.agent.api.WebServerController;
 import com.edmunds.etm.common.api.AgentPaths;
 import com.edmunds.etm.common.api.ControllerPaths;
@@ -45,23 +46,24 @@ public class RuleSetMonitor implements ZooKeeperConnectionListener, Watcher {
     private final ZooKeeperConnection connection;
     private final WebServerController serverController;
     private final AgentReporter agentReporter;
-    private final String ruleSetNodePath;
     private final AgentPaths agentPaths;
     private final RuleSetDeploymentExecutor deploymentExecutor;
+    private final String ruleSetNodePath;
 
     @Autowired
     public RuleSetMonitor(ZooKeeperConnection connection,
                           WebServerController serverController,
                           AgentReporter agentReporter,
                           ControllerPaths controllerPaths,
-                          AgentPaths agentPaths) {
+                          AgentPaths agentPaths,
+                          AgentConfig agentConfig) {
 
         this.connection = connection;
         this.serverController = serverController;
         this.agentReporter = agentReporter;
-        this.ruleSetNodePath = controllerPaths.getApacheConf();
         this.agentPaths = agentPaths;
         this.deploymentExecutor = new RuleSetDeploymentExecutor();
+        this.ruleSetNodePath = agentConfig.getRuleSetNodePath(controllerPaths);
     }
 
     @Override

@@ -1,0 +1,56 @@
+<assembly>
+    <id>haproxy</id>
+
+    <formats>
+        <format>zip</format>
+    </formats>
+    <includeBaseDirectory>false</includeBaseDirectory>
+
+    <dependencySets>
+        <dependencySet>
+            <outputDirectory>lib</outputDirectory>
+        </dependencySet>
+    </dependencySets>
+
+    <fileSets>
+        <fileSet>
+            <directory>${project.build.directory}/classes</directory>
+            <includes>
+                <include>*.xml</include>
+            </includes>
+            <outputDirectory>/resources</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${basedir}/src/main/resources</directory>
+            <includes>
+                <include>*.sh</include>
+            </includes>
+            <filtered>true</filtered>
+            <outputDirectory>/</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${basedir}/src/main/resources/META-INF</directory>
+            <includes>
+                <include>*.sh</include>
+            </includes>
+            <filtered>true</filtered>
+            <outputDirectory>/META-INF</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${basedir}/src/main/resources/init</directory>
+            <includes>
+                <include>*</include>
+            </includes>
+            <filtered>true</filtered>
+            <outputDirectory>/init</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${basedir}/src/main/startup/haproxy</directory>
+            <includes>
+                <include>*.properties</include>
+            </includes>
+            <filtered>true</filtered>
+            <outputDirectory>/</outputDirectory>
+        </fileSet>
+    </fileSets>
+</assembly>

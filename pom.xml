@@ -55,13 +55,24 @@
                 <version>2.2-beta-2</version>
                 <executions>
                     <execution>
-                        <id>create-zip</id>
+                        <id>create-apache-zip</id>
                         <phase>package</phase>
                         <goals>
                             <goal>single</goal>
                         </goals>
                         <configuration>
-                            <descriptor>src/main/config/dep.xml</descriptor>
+                            <descriptor>src/main/assembly/apache.xml</descriptor>
+                            <finalName>etm-agent</finalName>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>create-haproxy-zip</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <descriptor>src/main/assembly/haproxy.xml</descriptor>
                             <finalName>etm-agent</finalName>
                         </configuration>
                     </execution>

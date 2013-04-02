@@ -13,33 +13,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.edmunds.etm.agent.apache;
+package com.edmunds.etm.agent.haproxy;
 
 import com.edmunds.etm.agent.api.AgentConfig;
 import com.edmunds.etm.common.api.ControllerPaths;
 import org.springframework.stereotype.Component;
 
 /**
- * Configuration properties for the Apache agent process. <p/>
+ * Configuration properties for the HA Proxy agent process. <p/>
  *
  * @author Ryan Holmes
  */
 @Component
-public class ApacheConfig extends AgentConfig {
+public class HaProxyConfig extends AgentConfig {
 
     // Default path of the configuration file
-    private static final String DEFAULT_FILE_PATH = "/var/lib/etm-agent/etm-apache.conf";
+    private static final String DEFAULT_FILE_PATH = "/etc/haproxy/haproxy.cfg";
 
     // Default command to check configuration file syntax
-    private static final String DEFAULT_SYNTAX_CHECK_COMMAND = "/apps/apache-httpd/bin/apachectl -t -f {FILE_PATH}";
+    private static final String DEFAULT_SYNTAX_CHECK_COMMAND = "/usr/sbin/haproxy -f {FILE_PATH} -c";
 
-    // Default command to start Apache
-    private static final String DEFAULT_START_COMMAND = "sudo /sbin/service httpd start";
+    // Default command to start HA Proxy
+    private static final String DEFAULT_START_COMMAND = "sudo /sbin/service haproxy start";
 
-    // Default command to restart Apache
-    private static final String DEFAULT_RESTART_COMMAND = "sudo /sbin/service httpd reload";
+    // Default command to restart HA Proxy
+    private static final String DEFAULT_RESTART_COMMAND = "sudo /sbin/service haproxy reload";
 
-    public ApacheConfig() {
+    public HaProxyConfig() {
         this.filePath = DEFAULT_FILE_PATH;
         this.syntaxCheckCommand = DEFAULT_SYNTAX_CHECK_COMMAND;
         this.startCommand = DEFAULT_START_COMMAND;
@@ -48,6 +48,6 @@ public class ApacheConfig extends AgentConfig {
 
     @Override
     public String getRuleSetNodePath(ControllerPaths controllerPaths) {
-        return controllerPaths.getApacheConf();
+        return controllerPaths.getHaProxyConf();
     }
 }

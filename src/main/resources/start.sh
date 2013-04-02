@@ -85,14 +85,16 @@ if  [ -d ${OUTPUT_DIR} ]; then
    mkdir -p ${OUTPUT_DIR}
 fi
 
+JMX_AGENT_PATH=(${APP_HOME}/lib/jmxrmi-agent*.jar)
+
 if [ $# -eq $EXPECTED_ARGS ] && [ x"$1" = "x-fg" ]; then
         ${JAVA_HOME}/bin/java -Xms${MIN_MEM} -Xmx${MAX_MEM} ${GC_OPTIONS} \
         -DOUTPUT_DIR=${OUTPUT_DIR} -DLOGFILE_NAME=${LOGFILE_NAME} \
-        -javaagent:${APP_HOME}/lib/jmxrmi-agent.jar -Dedmunds.jmxrmi.agent.port=${JMX_PORT} \
+        -javaagent:${JMX_AGENT_PATH} -Dedmunds.jmxrmi.agent.port=${JMX_PORT} \
         ${CLASS_NAME}
 else
         ${COMMAND_PREFIX} ${JAVA_HOME}/bin/java -Xms${MIN_MEM} -Xmx${MAX_MEM} ${GC_OPTIONS} \
         -DOUTPUT_DIR=${OUTPUT_DIR} -DLOGFILE_NAME=${LOGFILE_NAME} \
-        -javaagent:${APP_HOME}/lib/jmxrmi-agent.jar -Dedmunds.jmxrmi.agent.port=${JMX_PORT} \
+        -javaagent:${JMX_AGENT_PATH} -Dedmunds.jmxrmi.agent.port=${JMX_PORT} \
         ${CLASS_NAME} 2>/dev/null 1>/dev/null &
 fi

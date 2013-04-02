@@ -49,6 +49,15 @@ public interface WebServerController {
     public boolean checkSyntax();
 
     /**
+     * Starts the web server.
+     * <p/>
+     * This assumes the web server is not running.
+     *
+     * @return true if successful, false otherwise
+     */
+    public boolean start();
+
+    /**
      * Restarts the web server.
      *
      * @return true if successful, false otherwise

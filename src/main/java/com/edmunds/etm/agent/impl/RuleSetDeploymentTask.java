@@ -34,7 +34,7 @@ import java.util.Date;
  *
  * @author Ryan Holmes
  */
-public class RuleSetDeploymentTask implements Runnable, ZooKeeperElectionListener, HealthCheckListener {
+public class RuleSetDeploymentTask implements Runnable, ZooKeeperElectionListener {
 
     private static final Logger logger = Logger.getLogger(RuleSetDeploymentTask.class);
 
@@ -80,7 +80,7 @@ public class RuleSetDeploymentTask implements Runnable, ZooKeeperElectionListene
         // Get the current configuration
         oldRuleSetData = serverController.readRuleSetData();
 
-        if(Arrays.equals(oldRuleSetData, newRuleSetData)) {
+        if (Arrays.equals(oldRuleSetData, newRuleSetData)) {
             // No change to rule set data, report as successful deployment
             logger.info(String.format("Current rule set %s is up to date", getOldRuleSetDigest()));
             deploymentResult = RuleSetDeploymentResult.OK;
@@ -92,10 +92,10 @@ public class RuleSetDeploymentTask implements Runnable, ZooKeeperElectionListene
 
         logger.info("Waiting for leadership election");
         try {
-            synchronized(lock) {
+            synchronized (lock) {
                 lock.wait();
             }
-        } catch(InterruptedException e) {
+        } catch (InterruptedException e) {
             logger.error("Rule set deployment task interrupted", e);
             connection.reconnect();
         }
@@ -104,21 +104,78 @@ public class RuleSetDeploymentTask implements Runnable, ZooKeeperElectionListene
     @Override
     public void onElectionStateChange(ZooKeeperElection zooKeeperElection, boolean master) {
         if (master) {
-            deployNewRuleSet();
+            executeHealthCheck(new HealthCheckListener() {
+                @Override
+                public void onHealthCheckComplete(boolean alive) {
+                    deployNewRuleSet(alive);
+                }
+            });
         } else {
             reportDeploymentEvent();
             exit();
         }
     }
 
-    @Override
-    public void onHealthCheckComplete(boolean alive) {
-        if(alive) {
-            if(!ruleSetRolledBack) {
+    private void executeHealthCheck(HealthCheckListener healthCheck) {
+        serverController.newHealthCheck().execute(healthCheck);
+    }
+
+    /**
+     * Deploys the new rule set data and restarts the web server.
+     * <p/>
+     * This method checks the syntax of the new rule set data and rolls back to the current rule set if an error is
+     * detected. It will also roll back if the server restart command or the health check fails.
+     */
+    private void deployNewRuleSet(boolean running) {
+
+        // Write the new rule set file
+        logger.info(String.format("Writing data for rule set %s", getNewRuleSetDigest()));
+        serverController.writeRuleSetData(newRuleSetData);
+
+        // Test the syntax
+        boolean syntaxOk = serverController.checkSyntax();
+
+        if (!syntaxOk) {
+            logger.error(String.format("Syntax check failed with rule set %s", getNewRuleSetDigest()));
+            deploymentResult = RuleSetDeploymentResult.SYNTAX_CHECK_FAILED;
+
+            // Restore old rule set
+            rollBackRuleSet();
+            return;
+        }
+
+        // Restart with new rule set
+        logger.info(String.format("Restarting server with rule set %s", getNewRuleSetDigest()));
+        boolean restartOk = running ? serverController.restart() : serverController.start();
+        if (!restartOk) {
+            logger.warn(String.format("Server restart failed with rule set %s", getNewRuleSetDigest()));
+            deploymentResult = RuleSetDeploymentResult.RESTART_COMMAND_FAILED;
+
+            // Restore old rule set
+            rollBackRuleSet();
+            return;
+        }
+
+        // Syntax check and restart ok, execute health check
+        verifyRuleDeployment();
+    }
+
+    private void verifyRuleDeployment() {
+        executeHealthCheck(new HealthCheckListener() {
+            @Override
+            public void onHealthCheckComplete(boolean alive) {
+                processHealthCheckResult(alive);
+            }
+        });
+    }
+
+    public void processHealthCheckResult(boolean alive) {
+        if (alive) {
+            if (!ruleSetRolledBack) {
                 deploymentResult = RuleSetDeploymentResult.OK;
             }
             restartElection.withdraw();
-        } else if(ruleSetRolledBack) {
+        } else if (ruleSetRolledBack) {
             logger.error(String.format("Rollback failed with rule set %s", getNewRuleSetDigest()));
             deploymentResult = RuleSetDeploymentResult.ROLLBACK_FAILED;
             restartElection.withdraw();
@@ -130,47 +187,6 @@ public class RuleSetDeploymentTask implements Runnable, ZooKeeperElectionListene
     }
 
     /**
-     * Deploys the new rule set data and restarts the web server.
-     * <p/>
-     * This method checks the syntax of the new rule set data and rolls back to the current rule set if an error is
-     * detected. It will also roll back if the server restart command or the health check fails.
-     */
-    private void deployNewRuleSet() {
-
-
-        // Write the new rule set file
-        logger.info(String.format("Writing data for rule set %s", getNewRuleSetDigest()));
-        serverController.writeRuleSetData(newRuleSetData);
-
-        // Test the syntax
-        boolean syntaxOk = serverController.checkSyntax();
-
-        if(!syntaxOk) {
-            logger.error(String.format("Syntax check failed with rule set %s", getNewRuleSetDigest()));
-            deploymentResult = RuleSetDeploymentResult.SYNTAX_CHECK_FAILED;
-
-            // Restore old rule set
-            rollBackRuleSet();
-            return;
-        }
-
-        // Restart with new rule set
-        logger.info(String.format("Restarting server with rule set %s", getNewRuleSetDigest()));
-        boolean restartOk = serverController.restart();
-        if(!restartOk) {
-            logger.warn(String.format("Server restart failed with rule set %s", getNewRuleSetDigest()));
-            deploymentResult = RuleSetDeploymentResult.RESTART_COMMAND_FAILED;
-
-            // Restore old rule set
-            rollBackRuleSet();
-            return;
-        }
-
-        // Syntax check and restart ok, execute health check
-        serverController.newHealthCheck().execute(this);
-    }
-
-    /**
      * Rolls back the rule set back to the original data.
      */
     private void rollBackRuleSet() {
@@ -179,11 +195,11 @@ public class RuleSetDeploymentTask implements Runnable, ZooKeeperElectionListene
         ruleSetRolledBack = true;
 
         boolean success = serverController.restart();
-        if(!success) {
+        if (!success) {
             deploymentResult = RuleSetDeploymentResult.RESTART_COMMAND_FAILED;
             logger.error(String.format("Server restart failed with rule set %s", getOldRuleSetDigest()));
         }
-        serverController.newHealthCheck().execute(this);
+        verifyRuleDeployment();
     }
 
     private void reportDeploymentEvent() {
@@ -192,7 +208,7 @@ public class RuleSetDeploymentTask implements Runnable, ZooKeeperElectionListene
         RuleSetDeploymentEvent event = new RuleSetDeploymentEvent(eventDate, ruleSetDigest, deploymentResult);
 
         String activeRuleSetDigest;
-        if(deploymentResult == RuleSetDeploymentResult.OK) {
+        if (deploymentResult == RuleSetDeploymentResult.OK) {
             activeRuleSetDigest = ruleSetDigest;
         } else {
             activeRuleSetDigest = getOldRuleSetDigest();
@@ -201,21 +217,21 @@ public class RuleSetDeploymentTask implements Runnable, ZooKeeperElectionListene
     }
 
     private String getNewRuleSetDigest() {
-        if(newRuleSetDigest == null) {
+        if (newRuleSetDigest == null) {
             newRuleSetDigest = AgentUtils.ruleSetDigest(newRuleSetData);
         }
         return newRuleSetDigest;
     }
 
     private String getOldRuleSetDigest() {
-        if(oldRuleSetDigest == null) {
+        if (oldRuleSetDigest == null) {
             oldRuleSetDigest = AgentUtils.ruleSetDigest(oldRuleSetData);
         }
         return oldRuleSetDigest;
     }
 
     private void exit() {
-        synchronized(lock) {
+        synchronized (lock) {
             lock.notifyAll();
         }
     }

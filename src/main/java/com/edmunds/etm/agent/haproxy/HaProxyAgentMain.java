@@ -13,33 +13,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.edmunds.etm.agent.apache;
+package com.edmunds.etm.agent.haproxy;
 
 import com.edmunds.etm.agent.impl.Agent;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 /**
- * The Apache agent application.
+ * The HA Proxy agent application.
+ * <p/>
+ * This class provides a main method to start an agent.
  *
- * This class provides a main method to start an Apache agent.
- *
- * @author Ryan Holmes
+ * @author David Trott
  */
-public final class ApacheAgentMain {
+public final class HaProxyAgentMain {
 
     public static void main(String[] args) {
 
         // Create the Spring application context
-        ClassPathXmlApplicationContext ctx = new ClassPathXmlApplicationContext("apache-etm-agent-context.xml");
+        ClassPathXmlApplicationContext ctx = new ClassPathXmlApplicationContext("ha-proxy-etm-agent-context.xml");
         ctx.registerShutdownHook();
 
-        // Run the Apache agent
+        // Run the agent
         Agent agent;
         agent = (Agent) ctx.getBean("agent", Agent.class);
         agent.run();
     }
 
-    private ApacheAgentMain() {
+    private HaProxyAgentMain() {
         // This class should never be instantiated.
     }
 }
