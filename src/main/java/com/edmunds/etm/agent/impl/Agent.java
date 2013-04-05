@@ -15,8 +15,6 @@
  */
 package com.edmunds.etm.agent.impl;
 
-import com.edmunds.etm.client.impl.ClientManager;
-import com.edmunds.etm.client.impl.DaemonConfig;
 import com.edmunds.etm.common.api.AgentPaths;
 import com.edmunds.zookeeper.connection.ZooKeeperConnection;
 import com.edmunds.zookeeper.connection.ZooKeeperNodeInitializer;
@@ -42,22 +40,16 @@ public class Agent implements Runnable, InitializingBean, DisposableBean {
     private final RuleSetMonitor ruleSetMonitor;
     private final AgentReporter agentReporter;
     private final AgentPaths agentPaths;
-    private final ClientManager clientManager;
-    private final DaemonConfig daemonConfig;
 
     @Autowired
     public Agent(ZooKeeperConnection connection,
                  RuleSetMonitor ruleSetMonitor,
                  AgentReporter agentReporter,
-                 AgentPaths agentPaths,
-                 ClientManager clientManager,
-                 DaemonConfig daemonConfig) {
+                 AgentPaths agentPaths) {
         this.connection = connection;
         this.ruleSetMonitor = ruleSetMonitor;
         this.agentReporter = agentReporter;
         this.agentPaths = agentPaths;
-        this.clientManager = clientManager;
-        this.daemonConfig = daemonConfig;
     }
 
     @Override
@@ -71,11 +63,7 @@ public class Agent implements Runnable, InitializingBean, DisposableBean {
     @Override
     public void run() {
         logger.info("*** Starting ETM Agent ***");
-
-        daemonConfig.setServiceName("Apache/Web-Tier");
-        daemonConfig.setVipBaseName("apache_httpd_webtier");
-        daemonConfig.setVipAutoDelete(false);
-        clientManager.register(daemonConfig.buildClientConfig());
+        connection.connect();
 
         try {
             synchronized (this) {
@@ -90,7 +78,7 @@ public class Agent implements Runnable, InitializingBean, DisposableBean {
     public void destroy() throws Exception {
         logger.info("*** Stopping ETM Agent ***");
         if (connection != null) {
-            clientManager.shutdown();
+            connection.close();
         }
     }
 }
